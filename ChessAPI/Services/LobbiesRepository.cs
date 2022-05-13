@@ -48,6 +48,17 @@ public class LobbiesRepository
         };
     }
 
+    public Channel<string> Host(IdentifyPlayerDTO identify)
+    {
+        var player = GetLobby(identify.LobbyId).GetPlayer(identify.Key);
+
+        var channel = Channel.CreateUnbounded<string>();
+
+        player.Channels.Add(channel);
+
+        return channel;
+    }
+
     public void Leave(int lobbyId, Guid key)
     {
         var lobby = GetLobby(lobbyId);
@@ -73,7 +84,7 @@ public class LobbiesRepository
 
     private Lobby GetLobby(int lobbyId)
     {
-        return lobbies.FirstOrDefault(l => l.LobbyId == lobbyId) ?? throw new LobbyNotFoundException(lobbyId);
+        return lobbies.FirstOrDefault(l => l.LobbyId == lobbyId) ?? throw new LobbyNotFoundException($"Lobby {lobbyId} has been not found...");
     }
 
     private static string ValidateUsername(string username)

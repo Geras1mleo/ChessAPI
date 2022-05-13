@@ -65,10 +65,11 @@ public class Lobby
 
     public void LeaveLobby(Guid key)
     {
-        var player = ValidatePlayer(key).player;
+        var player = GetPlayer(key);
 
         if (player == FirstPlayer)
         {
+            FirstPlayer.CloseHosts();
             FirstPlayer = null;
 
             if (SecondPlayer != null)
@@ -80,6 +81,7 @@ public class Lobby
         }
         else if (player == SecondPlayer)
         {
+            SecondPlayer.CloseHosts();
             SecondPlayer = null;
 
             if (FirstPlayer != null)
@@ -131,7 +133,7 @@ public class Lobby
 
     public void DrawConfirm(Guid key)
     {
-        var opponent = ValidatePlayer(key).opponent;
+        var opponent = GetOppositePlayer(GetPlayer(key));
         ValidateOpponentLeft(opponent);
 
         if (opponent.PendingDraw)
@@ -142,7 +144,7 @@ public class Lobby
 
     public void DrawDecline(Guid key)
     {
-        var opponent = ValidatePlayer(key).opponent;
+        var opponent = GetOppositePlayer(GetPlayer(key));
         ValidateOpponentLeft(opponent);
 
         if (opponent.PendingDraw)
@@ -169,7 +171,7 @@ public class Lobby
 
     public void RematchConfirm(Guid key)
     {
-        var opponent = ValidatePlayer(key).opponent;
+        var opponent = GetOppositePlayer(GetPlayer(key));
         ValidateOpponentLeft(opponent);
 
         if (opponent.PendingRematch)
@@ -180,7 +182,7 @@ public class Lobby
 
     public void RematchDecline(Guid key)
     {
-        var opponent = ValidatePlayer(key).opponent;
+        var opponent = GetOppositePlayer(GetPlayer(key));
         ValidateOpponentLeft(opponent);
 
         if (opponent.PendingRematch)
@@ -210,9 +212,23 @@ public class Lobby
 
     public Player GetOppositePlayer(Player player)
     {
-        if (player == FirstPlayer) return SecondPlayer;
-        else if (player == SecondPlayer) return FirstPlayer;
+        if (player == FirstPlayer) 
+            return SecondPlayer;
+        else if (player == SecondPlayer) 
+            return FirstPlayer;
+
         else return null;
+    }
+
+    public Player GetPlayer(Guid key)
+    {
+        if (FirstPlayer?.Key == key)
+            return FirstPlayer;
+
+        else if (SecondPlayer?.Key == key)
+            return SecondPlayer;
+
+        throw new LobbyNotFoundException($"Player \"{key}\" not found...");
     }
 
     public PlayerDTO GetPlayerDTO(Player player)
@@ -244,7 +260,7 @@ public class Lobby
         else if (SecondPlayer?.Key == key)
             return (SecondPlayer, FirstPlayer);
 
-        throw new LobbyException("Player not found.");
+        throw new LobbyNotFoundException($"Player \"{key}\" not found...");
     }
 
     private static void ValidateOpponentLeft(Player opponent)

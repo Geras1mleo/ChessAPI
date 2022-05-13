@@ -11,7 +11,7 @@ public class LobbiesService
 
     private Lobby GetLobby(int lobbyId)
     {
-        return lobbies.FirstOrDefault(i => i.LobbyId == lobbyId) ?? throw new LobbyNotFoundException(lobbyId);
+        return lobbies.FirstOrDefault(i => i.LobbyId == lobbyId) ?? throw new LobbyNotFoundException($"Lobby {lobbyId} has been not found...");
     }
 
     public ChessMoveDTO Move(int lobbyId, Guid key, string move)

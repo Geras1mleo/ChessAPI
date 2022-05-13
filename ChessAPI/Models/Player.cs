@@ -2,23 +2,39 @@
 
 public class Player
 {
+    public List<Channel<string>> Channels { get; }
+
     public string Username { get; }
     public PieceColor Color { get; set; }
     public Guid Key { get; }
-
-    public WebSocket Socket { get; set; }
 
     public double Score { get; set; }
     public bool PendingDraw { get; set; }
     public bool PendingRematch { get; set; }
 
-    public Player(string username, Guid key, WebSocket socket = null)
+    public Player(string username, Guid key)
     {
         Username = username;
         Key = key;
-        Socket = socket;
         PendingDraw = false;
         PendingRematch = false;
+        Channels = new List<Channel<string>>();
+    }
+
+    ~Player()
+    {
+        CloseHosts();
+    }
+
+    public void CloseHosts()
+    {
+        foreach (var item in Channels)
+        {
+            if (!item.Reader.Completion.IsCompleted)
+            {
+                item.Writer.Complete();
+            }
+        }
     }
 
     public void ResetPendings()
@@ -27,13 +43,13 @@ public class Player
         PendingRematch = false;
     }
 
-    public void Notify(string body)
+    public async Task Notify(string body)
     {
-        if (Socket != null)
+        foreach (var channel in Channels)
         {
-            if (Socket.State == WebSocketState.Open)
+            if (!channel.Reader.Completion.IsCompleted)
             {
-                // todo
+                await channel.Writer.WriteAsync(body);
             }
         }
     }
