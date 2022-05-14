@@ -1,4 +1,4 @@
-﻿namespace ChessAPI.Models;
+﻿namespace ChessServices.Models;
 
 public class Player
 {
@@ -28,11 +28,11 @@ public class Player
 
     public void CloseHosts()
     {
-        foreach (var item in Channels)
+        foreach (var channel in Channels)
         {
-            if (!item.Reader.Completion.IsCompleted)
+            if (!channel.Reader.Completion.IsCompleted)
             {
-                item.Writer.Complete();
+                channel.Writer.Complete();
             }
         }
     }
@@ -43,14 +43,15 @@ public class Player
         PendingRematch = false;
     }
 
-    public async Task Notify(string body)
+    public Task Notify(string body)
     {
         foreach (var channel in Channels)
         {
             if (!channel.Reader.Completion.IsCompleted)
             {
-                await channel.Writer.WriteAsync(body);
+                channel.Writer.WriteAsync(body);
             }
         }
+        return Task.CompletedTask;
     }
 }

@@ -1,58 +1,68 @@
 ﻿namespace ChessAPI.Controllers;
 
-[Route("Lobby/")]
+[Route("Lobby")]
 [ApiController]
 public class GameController : ControllerBase
 {
-    readonly LobbiesService service;
+    private readonly IMediator mediator;
 
-    public GameController(LobbiesService service)
+    public GameController(IMediator mediator)
     {
-        this.service = service;
+        this.mediator = mediator;
     }
 
     [HttpPost("Move/{lobbyId}")]
-    [ProducesResponseType(typeof(ChessMoveDTO), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(ChessErrorDTO), StatusCodes.Status400BadRequest)]
-    public ActionResult MoveInLobby([Required] int lobbyId, [Required] string move, [FromHeader(Name = "key")][Required] Guid key)
+    [ProducesResponseType(typeof(IChessResponse<ChessBoardDTO>), StatusCodes.Status200OK)]
+    //[ProducesResponseType(typeof(ChessErrorDTO), StatusCodes.Status400BadRequest)]
+    public ActionResult<IChessResponse<BaseResponseData>> MoveInLobby([Required] int lobbyId, [Required] string move, [FromHeader(Name = "key")][Required] Guid key)
     {
-        return Wrap(() =>
+        return Handle(() =>
         {
-            return Ok(service.Move(lobbyId, key, move));
+            return mediator.Send(new MoveCommand(lobbyId, key, move))
+                    .GetAwaiter()
+                    .GetResult();
         });
     }
 
-    [HttpGet("Explore/{lobbyId}")]
-    [ProducesResponseType(typeof(ChessGameDTO), StatusCodes.Status200OK)]
-    public ActionResult ExploreLobby([Required] int lobbyId)
+    [HttpGet("Board/{lobbyId}")]
+    [ProducesResponseType(typeof(IChessResponse<ChessBoardDTO>), StatusCodes.Status200OK)]
+    public ActionResult<IChessResponse<BaseResponseData>> ExploreLobby([Required] int lobbyId)
     {
-        return Wrap(() =>
+        // todo fields params
+        return Handle(() =>
         {
-            return Ok(service.Explore(lobbyId));
+            return mediator.Send(new ExploreBoardQuery(lobbyId))
+                       .GetAwaiter()
+                       .GetResult();
         });
     }
 
-    private ActionResult Wrap(Func<ActionResult> target)
+    private ActionResult<IChessResponse<BaseResponseData>> Handle(Func<IChessResponse<BaseResponseData>> target)
     {
         try
         {
-            return target();
+            return Ok(target());
         }
         catch (LobbyNotFoundException e)
         {
-            return NotFound(e.Message);
+            return NotFound(ChessResponse.NotFound(e.Message));
         }
         catch (LobbyException e)
         {
-            return BadRequest(e.Message);
+            return BadRequest(ChessResponse.BadRequest(e.Message));
         }
         catch (ChessException e)
         {
-            return BadRequest(new ChessErrorDTO() { Error = e.Message, Fen = e.Board.ToFen() });
+            return BadRequest(ChessResponse.BadRequest(e.Message,
+                                                       new ChessBoardDTO
+                                                       {
+                                                           FEN = e.Board.ToFen(),
+                                                           PGN = e.Board.ToPgn()
+                                                       }));
         }
         catch (Exception e)
         {
-            return BadRequest(e.Message);
+            return BadRequest(ChessResponse.BadRequest(e.Message));
         }
     }
 }

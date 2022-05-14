@@ -1,4 +1,4 @@
-﻿namespace ChessAPI.DTOs.WebSocketDTOs;
+﻿namespace ChessServices.DTOs.WebSocketDTOs;
 
 public class IdentifyPlayerDTO
 {

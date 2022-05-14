@@ -1,6 +1,6 @@
-﻿namespace ChessAPI.Exceptions;
+﻿namespace ChessServices.Exceptions;
 
-internal class LobbyNotFoundException : LobbyException
+public class LobbyNotFoundException : LobbyException
 {
     public LobbyNotFoundException(int id) : base($"Lobby {id} has been not found...") { }
 

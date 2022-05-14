@@ -1,63 +1,79 @@
 ﻿namespace ChessAPI.Controllers;
 
-[Route("Lobby/")]
+[Route("Lobby")]
 [ApiController]
 public class LobbiesController : ControllerBase
 {
-    readonly LobbiesRepository repository;
+    private readonly IMediator mediator;
 
-    public LobbiesController(LobbiesRepository repository)
+    public LobbiesController(IMediator mediator)
     {
-        this.repository = repository;
+        this.mediator = mediator;
     }
 
     [HttpPost("Create")]
-    [ProducesResponseType(typeof(LobbyJoinedDTO), StatusCodes.Status201Created)]
-    public ActionResult CreateLobby([Required] string username, int? lobbyId, Side? side)
+    [ProducesResponseType(typeof(IChessResponse<LobbyJoinedDTO>), StatusCodes.Status201Created)]
+    public ActionResult<IChessResponse<BaseResponseData>> CreateLobby([Required] string username, int? lobbyId, SideDTO? side)
     {
-        return Wrap(() =>
+        return Handle(() =>
         {
-            return Created("Lobby/Create", repository.Create(username, lobbyId, side == null ? null : PieceColor.FromValue((int)side)));
+            return mediator.Send(new CreateLobbyCommand(username, lobbyId, side))
+                            .GetAwaiter()
+                            .GetResult();
         });
     }
 
     [HttpPost("Join")]
-    [ProducesResponseType(typeof(LobbyJoinedDTO), StatusCodes.Status200OK)]
-    public ActionResult JoinLobby([Required] int lobbyId, [Required] string username)
+    [ProducesResponseType(typeof(IChessResponse<LobbyJoinedDTO>), StatusCodes.Status200OK)]
+    public ActionResult<IChessResponse<BaseResponseData>> JoinLobby([Required] int lobbyId, [Required] string username)
     {
-        return Wrap(() =>
+        return Handle(() =>
         {
-            return Ok(repository.Join(lobbyId, username));
+            return mediator.Send(new JoinLobbyCommand(username, lobbyId))
+                            .GetAwaiter()
+                            .GetResult();
         });
     }
 
     [HttpPost("Leave")]
-    public ActionResult LeaveLobby([Required] int lobbyId, [FromHeader(Name = "key")][Required] Guid key)
+    public ActionResult<IChessResponse<BaseResponseData>> LeaveLobby([Required] int lobbyId, [FromHeader(Name = "key")][Required] Guid key)
     {
-        return Wrap(() =>
+        return Handle(() =>
         {
-            repository.Leave(lobbyId, key);
-            return Ok($"Left from lobby {lobbyId} successfully!");
+            return mediator.Send(new LeaveLobbyCommand(lobbyId, key))
+                            .GetAwaiter()
+                            .GetResult();
         });
     }
 
-    private ActionResult Wrap(Func<ActionResult> target)
+    [HttpGet("{lobbyId}")]
+    [ProducesResponseType(typeof(IChessResponse<ChessLobbyDTO>), StatusCodes.Status200OK)]
+    public ActionResult<IChessResponse<BaseResponseData>> ExploreLobby([Required] int lobbyId)
+    {
+        return Handle(() =>
+        {
+            return mediator.Send(new ExploreLobbyQuery(lobbyId))
+                       .GetAwaiter()
+                       .GetResult();
+        });
+    }
+    private ActionResult<IChessResponse<BaseResponseData>> Handle(Func<IChessResponse<BaseResponseData>> target)
     {
         try
         {
-            return target();
+            return Ok(target());
         }
         catch (LobbyNotFoundException e)
         {
-            return NotFound(e.Message);
+            return NotFound(ChessResponse.NotFound(e.Message));
         }
         catch (LobbyException e)
         {
-            return BadRequest(e.Message);
+            return BadRequest(ChessResponse.BadRequest(e.Message));
         }
         catch (Exception e)
         {
-            return BadRequest(e.Message);
+            return BadRequest(ChessResponse.BadRequest(e.Message));
         }
     }
 }

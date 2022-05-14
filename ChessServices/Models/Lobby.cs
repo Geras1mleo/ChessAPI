@@ -1,4 +1,4 @@
-﻿namespace ChessAPI.Models;
+﻿namespace ChessServices.Models;
 
 public class Lobby
 {
@@ -7,28 +7,60 @@ public class Lobby
     // Timeouts for pending draws/rematches
 
     public int LobbyId { get; }
-    public Player FirstPlayer { get; private set; }
-    public Player SecondPlayer { get; private set; }
+    public Player WhitePlayer { get; private set; }
+    public Player BlackPlayer { get; private set; }
     public ChessBoard Board { get; private set; }
+
+    public List<Channel<string>> Spectators { get; }
 
     public Lobby(int lobbyId, Player player, PieceColor? side)
     {
+        Spectators = new List<Channel<string>>();
         LobbyId = lobbyId;
         switch (side)
         {
             case var e when e.Equals(PieceColor.White):
-                FirstPlayer = player;
-                FirstPlayer.Color = PieceColor.White;
+                WhitePlayer = player;
+                WhitePlayer.Color = PieceColor.White;
                 break;
             case var e when e.Equals(PieceColor.Black):
-                SecondPlayer = player;
-                SecondPlayer.Color = PieceColor.Black;
+                BlackPlayer = player;
+                BlackPlayer.Color = PieceColor.Black;
                 break;
             default:
-                FirstPlayer = player;
-                FirstPlayer.Color = PieceColor.White;
+                WhitePlayer = player;
+                WhitePlayer.Color = PieceColor.White;
                 break;
         }
+        InitializeBoard();
+    }
+
+    ~Lobby()
+    {
+        CloseHosts();
+    }
+
+    public void CloseHosts()
+    {
+        foreach (var channel in Spectators)
+        {
+            if (!channel.Reader.Completion.IsCompleted)
+            {
+                channel.Writer.Complete();
+            }
+        }
+    }
+
+    public Task Notify(string body)
+    {
+        foreach (var channel in Spectators)
+        {
+            if (!channel.Reader.Completion.IsCompleted)
+            {
+                channel.Writer.WriteAsync(body);
+            }
+        }
+        return Task.CompletedTask;
     }
 
     public void InitializeBoard()
@@ -44,51 +76,53 @@ public class Lobby
 
     public void Join(Player player)
     {
-        if (FirstPlayer == null)
+        if (WhitePlayer == null)
         {
-            FirstPlayer = player;
-            FirstPlayer.Color = PieceColor.White;
+            WhitePlayer = player;
+            WhitePlayer.Color = PieceColor.White;
             InitializeBoard();
 
-            SecondPlayer?.Notify("todo generate opponent joined DTO");
+            BlackPlayer?.Notify("todo generate opponent joined DTO");
         }
-        else if (SecondPlayer == null)
+        else if (BlackPlayer == null)
         {
-            SecondPlayer = player;
-            SecondPlayer.Color = PieceColor.Black;
+            BlackPlayer = player;
+            BlackPlayer.Color = PieceColor.Black;
             InitializeBoard();
 
-            FirstPlayer?.Notify("todo generate opponent joined DTO");
+            WhitePlayer?.Notify("todo generate opponent joined DTO");
         }
-        else throw new LobbyException($"Given lobby: {LobbyId} is full.");
+        else throw new LobbyException($"Lobby {LobbyId} is full.");
+
+        Notify("Somethind happened: joined");
     }
 
     public void LeaveLobby(Guid key)
     {
         var player = GetPlayer(key);
 
-        if (player == FirstPlayer)
+        if (player == WhitePlayer)
         {
-            FirstPlayer.CloseHosts();
-            FirstPlayer = null;
+            WhitePlayer.CloseHosts();
+            WhitePlayer = null;
 
-            if (SecondPlayer != null)
+            if (BlackPlayer != null)
             {
-                SecondPlayer.Notify("todo body left");
-                SecondPlayer.Score = 0;
-                SecondPlayer.ResetPendings();
+                BlackPlayer.Notify("todo body left");
+                BlackPlayer.Score = 0;
+                BlackPlayer.ResetPendings();
             }
         }
-        else if (player == SecondPlayer)
+        else if (player == BlackPlayer)
         {
-            SecondPlayer.CloseHosts();
-            SecondPlayer = null;
+            BlackPlayer.CloseHosts();
+            BlackPlayer = null;
 
-            if (FirstPlayer != null)
+            if (WhitePlayer != null)
             {
-                FirstPlayer.Notify("todo body left");
-                FirstPlayer.Score = 0;
-                FirstPlayer.ResetPendings();
+                WhitePlayer.Notify("todo body left");
+                WhitePlayer.Score = 0;
+                WhitePlayer.ResetPendings();
             }
         }
     }
@@ -106,7 +140,9 @@ public class Lobby
             player.Notify("todo body move");
             opponent.Notify("todo body move");
         }
-        else throw new LobbyException($"Given move: {move} is not valid.") { Board = Board };
+        else throw new LobbyException($"Move {move} is not valid.") { Board = Board };
+
+        Notify("Somethind happened: move made");
     }
 
     public void Resign(Guid key)
@@ -195,70 +231,71 @@ public class Lobby
 
     private void HandleRematchConfirmed()
     {
-        FirstPlayer.Notify("todo rematch body");// black
-        SecondPlayer.Notify("todo rematch body");// white
+        WhitePlayer.Notify("todo rematch body");// black
+        BlackPlayer.Notify("todo rematch body");// white
 
         // Swap
-        (SecondPlayer, FirstPlayer) = (FirstPlayer, SecondPlayer);
+        (BlackPlayer, WhitePlayer) = (WhitePlayer, BlackPlayer);
 
-        FirstPlayer.Color = PieceColor.White;
-        SecondPlayer.Color = PieceColor.Black;
+        WhitePlayer.Color = PieceColor.White;
+        BlackPlayer.Color = PieceColor.Black;
 
-        FirstPlayer.ResetPendings();
-        SecondPlayer.ResetPendings();
+        WhitePlayer.ResetPendings();
+        BlackPlayer.ResetPendings();
 
         InitializeBoard();
     }
 
     public Player GetOppositePlayer(Player player)
     {
-        if (player == FirstPlayer) 
-            return SecondPlayer;
-        else if (player == SecondPlayer) 
-            return FirstPlayer;
+        if (player == WhitePlayer)
+            return BlackPlayer;
+        else if (player == BlackPlayer)
+            return WhitePlayer;
 
         else return null;
     }
 
     public Player GetPlayer(Guid key)
     {
-        if (FirstPlayer?.Key == key)
-            return FirstPlayer;
+        if (WhitePlayer?.Key == key)
+            return WhitePlayer;
 
-        else if (SecondPlayer?.Key == key)
-            return SecondPlayer;
+        else if (BlackPlayer?.Key == key)
+            return BlackPlayer;
 
         throw new LobbyNotFoundException($"Player \"{key}\" not found...");
     }
 
     public PlayerDTO GetPlayerDTO(Player player)
     {
-        if (player == FirstPlayer)
+        if (player is null)
+            return null;
+
+        return new PlayerDTO
         {
-            return new PlayerDTO
-            {
-                Username = FirstPlayer.Username,
-                Side = Side.White
-            };
-        }
-        else if (player == SecondPlayer)
-        {
-            return new PlayerDTO
-            {
-                Username = SecondPlayer.Username,
-                Side = Side.Black
-            };
-        }
-        else return null;
+            Username = player.Username,
+        };
+    }
+
+    public SideDTO GetSide(Player player)
+    {
+        if (player.Color == PieceColor.White)
+            return SideDTO.White;
+
+        else if (player.Color == PieceColor.Black)
+            return SideDTO.Black;
+
+        throw new LobbyNotFoundException($"Player \"{player.Username}\" not found...");
     }
 
     private (Player player, Player opponent) ValidatePlayer(Guid key)
     {
-        if (FirstPlayer?.Key == key)
-            return (FirstPlayer, SecondPlayer);
+        if (WhitePlayer?.Key == key)
+            return (WhitePlayer, BlackPlayer);
 
-        else if (SecondPlayer?.Key == key)
-            return (SecondPlayer, FirstPlayer);
+        else if (BlackPlayer?.Key == key)
+            return (BlackPlayer, WhitePlayer);
 
         throw new LobbyNotFoundException($"Player \"{key}\" not found...");
     }

@@ -1,6 +1,6 @@
-﻿namespace ChessAPI.Exceptions;
+﻿namespace ChessServices.Exceptions;
 
-internal class LobbyException : Exception
+public class LobbyException : Exception
 {
     public ChessBoard Board { get; set; }
 
