@@ -14,7 +14,7 @@ public class GameController : ControllerBase
     [HttpPost("Move/{lobbyId}")]
     [ProducesResponseType(typeof(IChessResponse<ChessBoardDTO>), StatusCodes.Status200OK)]
     //[ProducesResponseType(typeof(ChessErrorDTO), StatusCodes.Status400BadRequest)]
-    public ActionResult<IChessResponse<BaseResponseData>> MoveInLobby([Required] int lobbyId, [Required] string move, [FromHeader(Name = "key")][Required] Guid key)
+    public ActionResult<IChessResponse<ChessResponseDTO>> MoveInLobby([Required] int lobbyId, [Required] string move, [FromHeader(Name = "key")][Required] Guid key)
     {
         return Handle(() =>
         {
@@ -26,9 +26,9 @@ public class GameController : ControllerBase
 
     [HttpGet("Board/{lobbyId}")]
     [ProducesResponseType(typeof(IChessResponse<ChessBoardDTO>), StatusCodes.Status200OK)]
-    public ActionResult<IChessResponse<BaseResponseData>> ExploreLobby([Required] int lobbyId)
+    public ActionResult<IChessResponse<ChessResponseDTO>> ExploreLobby([Required] int lobbyId)
     {
-        // todo fields params
+        // todo fields (needed properties to send) 
         return Handle(() =>
         {
             return mediator.Send(new ExploreBoardQuery(lobbyId))
@@ -37,7 +37,7 @@ public class GameController : ControllerBase
         });
     }
 
-    private ActionResult<IChessResponse<BaseResponseData>> Handle(Func<IChessResponse<BaseResponseData>> target)
+    private ActionResult<IChessResponse<ChessResponseDTO>> Handle(Func<IChessResponse<ChessResponseDTO>> target)
     {
         try
         {
@@ -56,8 +56,8 @@ public class GameController : ControllerBase
             return BadRequest(ChessResponse.BadRequest(e.Message,
                                                        new ChessBoardDTO
                                                        {
-                                                           FEN = e.Board.ToFen(),
-                                                           PGN = e.Board.ToPgn()
+                                                           FEN = e.Board?.ToFen(),
+                                                           PGN = e.Board?.ToPgn()
                                                        }));
         }
         catch (Exception e)

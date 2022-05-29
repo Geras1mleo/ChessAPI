@@ -1,6 +1,6 @@
 ﻿namespace ChessServices.Commands.Lobby;
 
-public class LeaveLobbyCommand : IChessRequest<BaseResponseData>
+public class LeaveLobbyCommand : IChessRequest<ChessResponseDTO>
 {
     public int LobbyId { get; set; }
     public Guid Key { get; set; }
@@ -12,7 +12,7 @@ public class LeaveLobbyCommand : IChessRequest<BaseResponseData>
     }
 }
 
-public class LeaveLobbyCommandHandler : IChessRequestHandler<LeaveLobbyCommand, BaseResponseData>
+public class LeaveLobbyCommandHandler : IChessRequestHandler<LeaveLobbyCommand, ChessResponseDTO>
 {
     private readonly LobbyValidator validator;
 
@@ -21,15 +21,19 @@ public class LeaveLobbyCommandHandler : IChessRequestHandler<LeaveLobbyCommand, 
         this.validator = validator;
     }
 
-    public Task<IChessResponse<BaseResponseData>> Handle(LeaveLobbyCommand request, CancellationToken cancellationToken)
+    public Task<IChessResponse<ChessResponseDTO>> Handle(LeaveLobbyCommand request, CancellationToken cancellationToken)
     {
         var lobby = validator.GetLobby(request.LobbyId);
         lobby.LeaveLobby(request.Key);
 
         // If both players left => delete lobby
         if (lobby.WhitePlayer is null && lobby.BlackPlayer is null)
+        {
             validator.Lobbies.Remove(lobby);
+            lobby.CloseHosts();
+        }
 
-        return Task.FromResult(ChessResponse.Ok<BaseResponseData>($"Left from Lobby {request.LobbyId} successfully!"));
+
+        return Task.FromResult(ChessResponse.Ok<ChessResponseDTO>($"Left from Lobby {request.LobbyId} successfully!"));
     }
 }

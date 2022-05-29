@@ -27,28 +27,10 @@ public class ExploreLobbyQueryHandler : IChessRequestHandler<ExploreLobbyQuery, 
                 ChessResponse.Ok("Exploring lobby...",
                 new ChessLobbyDTO
                 {
-                    BlackPlayer = new()
-                    {
-                        Username = lobby.BlackPlayer.Username,
-                        Score = lobby.BlackPlayer.Score,
-                        PendingDraw = lobby.BlackPlayer.PendingDraw,
-                        PendingRematch = lobby.BlackPlayer.PendingRematch,
-                        Connections = lobby.BlackPlayer.Channels.Count,
-                    },
-                    WhitePlayer = new()
-                    {
-                        Username = lobby.WhitePlayer.Username,
-                        Score = lobby.WhitePlayer.Score,
-                        PendingDraw = lobby.WhitePlayer.PendingDraw,
-                        PendingRematch = lobby.WhitePlayer.PendingRematch,
-                        Connections = lobby.WhitePlayer.Channels.Count,
-                    },
-                    Board = new()
-                    {
-                        FEN = lobby.Board.ToFen(),
-                        PGN = lobby.Board.ToFen(),
-                    },
-                    Spectators = lobby.Spectators.Count,
+                    BlackPlayer = lobby.GetFullPlayerDTO(lobby.BlackPlayer),
+                    WhitePlayer = lobby.GetFullPlayerDTO(lobby.WhitePlayer),
+                    Board = lobby.GetBoardDTO(),
+                    Spectators = lobby.SpectatorsChannels.Count,
                 }));
     }
 }

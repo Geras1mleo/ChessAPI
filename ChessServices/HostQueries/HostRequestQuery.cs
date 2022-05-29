@@ -1,4 +1,4 @@
-﻿namespace ChessServices.Notifications;
+﻿namespace ChessServices.HostQueries;
 
 public enum HostType
 {
@@ -30,7 +30,10 @@ public class HostRequestQueryHandler : INotificationHandler<HostRequestQuery>
     public async Task Handle(HostRequestQuery request, CancellationToken cancellationToken)
     {
         var webSocket = request.Socket;
+
+        Lobby lobby = null;
         Channel<string> channel = null;
+        Guid channelGuid = Guid.Empty;
 
         try
         {
@@ -49,7 +52,8 @@ public class HostRequestQueryHandler : INotificationHandler<HostRequestQuery>
                     return;
                 }
 
-                channel = HostPlayer(identifyObj);
+                (channel, channelGuid) = HostPlayer(identifyObj);
+                lobby = validator.GetLobby(identifyObj.LobbyId);
             }
             else
             {
@@ -66,7 +70,8 @@ public class HostRequestQueryHandler : INotificationHandler<HostRequestQuery>
                     return;
                 }
 
-                channel = HostSpectator(identifyObj);
+                (channel, channelGuid) = HostSpectator(identifyObj);
+                lobby = validator.GetLobby(identifyObj.LobbyId);
             }
 
             await SendTextAsync(webSocket, "Connection established!");
@@ -123,15 +128,19 @@ public class HostRequestQueryHandler : INotificationHandler<HostRequestQuery>
         }
         finally
         {
-            // Notify Player object that this channel is completed/ended
-            if (channel is not null && !channel.Reader.Completion.IsCompleted)
+            // Make sure lobby will not try to send any notifications to this channel
+            if (channel is not null && lobby is not null)
             {
-                channel.Writer.Complete();
+                channel.Writer.TryComplete();
+
+                lobby.SpectatorsChannels.Remove(channelGuid, out _);
+                lobby.WhitePlayer?.Channels.Remove(channelGuid, out _);
+                lobby.BlackPlayer?.Channels.Remove(channelGuid, out _);
             }
         }
     }
 
-    public Channel<string> HostPlayer(IdentifyPlayerDTO identify)
+    public (Channel<string> channel, Guid id) HostPlayer(IdentifyPlayerDTO identify)
     {
         // Bind player notifications to the channel
         // If lobbyID or player is not found => exception is thrown
@@ -139,13 +148,14 @@ public class HostRequestQueryHandler : INotificationHandler<HostRequestQuery>
         var player = validator.GetLobby(identify.LobbyId).GetPlayer(identify.Key);
 
         var channel = Channel.CreateUnbounded<string>();
+        var id = Guid.NewGuid();
 
-        player.Channels.Add(channel);
+        player.Channels.TryAdd(id, channel.Writer);
 
-        return channel;
+        return (channel, id);
     }
 
-    public Channel<string> HostSpectator(IdentifyLobbyDTO identify)
+    public (Channel<string> channel, Guid id) HostSpectator(IdentifyLobbyDTO identify)
     {
         // Bind spectator notifications to the channel
         // If lobbyID is not found => exception is thrown
@@ -153,10 +163,11 @@ public class HostRequestQueryHandler : INotificationHandler<HostRequestQuery>
         var lobby = validator.GetLobby(identify.LobbyId);
 
         var channel = Channel.CreateUnbounded<string>();
+        var id = Guid.NewGuid();
 
-        lobby.Spectators.Add(channel);
+        lobby.SpectatorsChannels.TryAdd(id, channel.Writer);
 
-        return channel;
+        return (channel, id);
     }
 
     private async Task SendTextAsync(WebSocket webSocket, string text)

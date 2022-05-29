@@ -7,10 +7,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <None Include="..\.editorconfig" Link=".editorconfig" />
-  </ItemGroup>
-
-  <ItemGroup>
     <PackageReference Include="MediatR.Extensions.Microsoft.DependencyInjection" Version="10.0.1" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="6.0.1" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="6.0.1">
@@ -23,6 +19,12 @@
 
   <ItemGroup>
     <ProjectReference Include="..\ChessServices\ChessServices.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="ChessLibrary">
+      <HintPath>..\..\ChessLibrary\ChessLibrary\bin\Release\net6.0\ChessLibrary.dll</HintPath>
+    </Reference>
   </ItemGroup>
 
 </Project>

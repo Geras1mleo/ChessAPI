@@ -10,7 +10,7 @@ global using ChessServices;
 global using ChessServices.DTOs;
 global using ChessServices.Models;
 global using ChessServices.Exceptions;
-global using ChessServices.Notifications;
+global using ChessServices.HostQueries;
 global using ChessServices.Commands.Lobby;
 global using ChessServices.Commands.Game;
 global using ChessServices.Queries.Lobby;

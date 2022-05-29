@@ -1,6 +1,6 @@
 ﻿namespace ChessServices.DTOs;
 
-public class ChessLobbyDTO : BaseResponseData
+public class ChessLobbyDTO : ChessResponseDTO
 {
     public PlayerFullDTO WhitePlayer { get; set; }
     public PlayerFullDTO BlackPlayer { get; set; }

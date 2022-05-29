@@ -1,6 +1,6 @@
 ﻿namespace ChessServices.DTOs;
 
-public class ChessBoardDTO : BaseResponseData
+public class ChessBoardDTO : ChessResponseDTO
 {
     public string FEN { get; set; }
     public string PGN { get; set; }

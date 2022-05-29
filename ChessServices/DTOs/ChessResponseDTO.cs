@@ -1,4 +1,4 @@
 ﻿namespace ChessServices.DTOs;
 
 
-public class BaseResponseData { }
+public class ChessResponseDTO { }

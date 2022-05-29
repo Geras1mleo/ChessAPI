@@ -7,10 +7,11 @@ builder.Logging.AddConsole();
 builder.Services.AddSingleton<List<Lobby>>();
 builder.Services.AddTransient<LobbyValidator>();
 
-builder.Services.AddControllers().AddJsonOptions(options =>
-{
-    options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
-});
+builder.Services.AddControllers()
+                .AddJsonOptions(options =>
+                {
+                    options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+                });
 
 // Add MediatR
 builder.Services.AddMediatR(typeof(ChessServices.ChessResponse).Assembly);

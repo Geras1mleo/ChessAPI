@@ -1,6 +1,6 @@
 ﻿namespace ChessServices.DTOs;
 
-public class LobbyJoinedDTO : BaseResponseData
+public class LobbyJoinedDTO : ChessResponseDTO
 {
     public int LobbyId { get; set; }
     public Guid Key { get; set; }

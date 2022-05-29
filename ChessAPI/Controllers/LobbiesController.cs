@@ -13,7 +13,7 @@ public class LobbiesController : ControllerBase
 
     [HttpPost("Create")]
     [ProducesResponseType(typeof(IChessResponse<LobbyJoinedDTO>), StatusCodes.Status201Created)]
-    public ActionResult<IChessResponse<BaseResponseData>> CreateLobby([Required] string username, int? lobbyId, SideDTO? side)
+    public ActionResult<IChessResponse<ChessResponseDTO>> CreateLobby([Required] string username, int? lobbyId, SideDTO? side)
     {
         return Handle(() =>
         {
@@ -25,7 +25,7 @@ public class LobbiesController : ControllerBase
 
     [HttpPost("Join")]
     [ProducesResponseType(typeof(IChessResponse<LobbyJoinedDTO>), StatusCodes.Status200OK)]
-    public ActionResult<IChessResponse<BaseResponseData>> JoinLobby([Required] int lobbyId, [Required] string username)
+    public ActionResult<IChessResponse<ChessResponseDTO>> JoinLobby([Required] int lobbyId, [Required] string username)
     {
         return Handle(() =>
         {
@@ -36,7 +36,7 @@ public class LobbiesController : ControllerBase
     }
 
     [HttpPost("Leave")]
-    public ActionResult<IChessResponse<BaseResponseData>> LeaveLobby([Required] int lobbyId, [FromHeader(Name = "key")][Required] Guid key)
+    public ActionResult<IChessResponse<ChessResponseDTO>> LeaveLobby([Required] int lobbyId, [FromHeader(Name = "key")][Required] Guid key)
     {
         return Handle(() =>
         {
@@ -48,7 +48,7 @@ public class LobbiesController : ControllerBase
 
     [HttpGet("{lobbyId}")]
     [ProducesResponseType(typeof(IChessResponse<ChessLobbyDTO>), StatusCodes.Status200OK)]
-    public ActionResult<IChessResponse<BaseResponseData>> ExploreLobby([Required] int lobbyId)
+    public ActionResult<IChessResponse<ChessResponseDTO>> ExploreLobby([Required] int lobbyId)
     {
         return Handle(() =>
         {
@@ -57,7 +57,7 @@ public class LobbiesController : ControllerBase
                        .GetResult();
         });
     }
-    private ActionResult<IChessResponse<BaseResponseData>> Handle(Func<IChessResponse<BaseResponseData>> target)
+    private ActionResult<IChessResponse<ChessResponseDTO>> Handle(Func<IChessResponse<ChessResponseDTO>> target)
     {
         try
         {

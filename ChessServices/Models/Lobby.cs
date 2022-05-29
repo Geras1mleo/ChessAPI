@@ -11,11 +11,11 @@ public class Lobby
     public Player BlackPlayer { get; private set; }
     public ChessBoard Board { get; private set; }
 
-    public List<Channel<string>> Spectators { get; }
+    public ConcurrentDictionary<Guid, ChannelWriter<string>> SpectatorsChannels { get; }
 
-    public Lobby(int lobbyId, Player player, PieceColor? side)
+    public Lobby(int lobbyId, Player player, PieceColor side)
     {
-        Spectators = new List<Channel<string>>();
+        SpectatorsChannels = new ConcurrentDictionary<Guid, ChannelWriter<string>>();
         LobbyId = lobbyId;
         switch (side)
         {
@@ -42,25 +42,25 @@ public class Lobby
 
     public void CloseHosts()
     {
-        foreach (var channel in Spectators)
+        for (int i = SpectatorsChannels.Count - 1; i >= 0; i--)
         {
-            if (!channel.Reader.Completion.IsCompleted)
-            {
-                channel.Writer.Complete();
-            }
+            SpectatorsChannels.ElementAt(i).Value.TryComplete();
         }
+
+        WhitePlayer?.CloseHosts();
+        BlackPlayer?.CloseHosts();
     }
 
-    public Task Notify(string body)
+    public Task NotifySpectatorsAsync(Func<string> generateBodyFunc)
     {
-        foreach (var channel in Spectators)
+        return Task.Run(async () =>
         {
-            if (!channel.Reader.Completion.IsCompleted)
+            var body = generateBodyFunc();
+            foreach (var channel in SpectatorsChannels)
             {
-                channel.Writer.WriteAsync(body);
+                await channel.Value.WriteAsync(body);
             }
-        }
-        return Task.CompletedTask;
+        });
     }
 
     public void InitializeBoard()
@@ -82,7 +82,12 @@ public class Lobby
             WhitePlayer.Color = PieceColor.White;
             InitializeBoard();
 
-            BlackPlayer?.Notify("todo generate opponent joined DTO");
+            BlackPlayer?.NotifyAsync(() => Tools.Serialize(
+                        new OpponentJoinedDTO
+                        {
+                            NotificationType = NotificationType.Joined,
+                            Opponent = GetPlayerDTO(player),
+                        }));
         }
         else if (BlackPlayer == null)
         {
@@ -90,11 +95,22 @@ public class Lobby
             BlackPlayer.Color = PieceColor.Black;
             InitializeBoard();
 
-            WhitePlayer?.Notify("todo generate opponent joined DTO");
+            WhitePlayer?.NotifyAsync(() => Tools.Serialize(
+                        new OpponentJoinedDTO
+                        {
+                            NotificationType = NotificationType.Joined,
+                            Opponent = GetPlayerDTO(player),
+                        }));
         }
         else throw new LobbyException($"Lobby {LobbyId} is full.");
 
-        Notify("Somethind happened: joined");
+        NotifySpectatorsAsync(() => Tools.Serialize(
+            new PlayerJoinedDTO
+            {
+                NotificationType = NotificationType.Joined,
+                JoinedPlayer = GetPlayerDTO(player),
+                Side = GetSide(player)
+            }));
     }
 
     public void LeaveLobby(Guid key)
@@ -108,7 +124,7 @@ public class Lobby
 
             if (BlackPlayer != null)
             {
-                BlackPlayer.Notify("todo body left");
+                BlackPlayer.NotifyAsync(() => "todo body left");
                 BlackPlayer.Score = 0;
                 BlackPlayer.ResetPendings();
             }
@@ -120,11 +136,12 @@ public class Lobby
 
             if (WhitePlayer != null)
             {
-                WhitePlayer.Notify("todo body left");
+                WhitePlayer.NotifyAsync(() => "todo body left");
                 WhitePlayer.Score = 0;
                 WhitePlayer.ResetPendings();
             }
         }
+        NotifySpectatorsAsync(() => "todo");
     }
 
     public void MakeMove(string move, Guid key)
@@ -137,12 +154,25 @@ public class Lobby
 
         if (Board.Move(move))
         {
-            player.Notify("todo body move");
-            opponent.Notify("todo body move");
+            opponent.NotifyAsync(() => Tools.Serialize(
+                new OpponentMovedDTO
+                {
+                    NotificationType = NotificationType.MovedPiece,
+                    Move = Board.MovesToSan.Last(),
+                    Board = GetBoardDTO(),
+                }));
         }
         else throw new LobbyException($"Move {move} is not valid.") { Board = Board };
 
-        Notify("Somethind happened: move made");
+        NotifySpectatorsAsync(() => Tools.Serialize(
+            new PlayerMovedDTO
+            {
+                NotificationType = NotificationType.MovedPiece,
+                Move = Board.MovesToSan.Last(),
+                Board = GetBoardDTO(),
+                Player = GetPlayerDTO(player),
+                Side = GetSide(player)
+            }));
     }
 
     public void Resign(Guid key)
@@ -164,7 +194,7 @@ public class Lobby
             throw new LobbyException("Please use DrawConfirm to respond to pending draw request.");
 
         player.PendingDraw = true;
-        opponent.Notify("todo draw offer");
+        opponent.NotifyAsync(() => "todo draw offer");
     }
 
     public void DrawConfirm(Guid key)
@@ -186,7 +216,7 @@ public class Lobby
         if (opponent.PendingDraw)
         {
             opponent.PendingDraw = false;
-            opponent.Notify("todo body draw declined");
+            opponent.NotifyAsync(() => "todo body draw declined");
         }
         else throw new LobbyException("Please use DrawOffer to offer draw.");
     }
@@ -202,7 +232,7 @@ public class Lobby
             throw new LobbyException("Please use RematchConfirm to respond to pending rematch request.");
 
         player.PendingRematch = true;
-        opponent.Notify("todo body rematch offer");
+        opponent.NotifyAsync(() => "todo body rematch offer");
     }
 
     public void RematchConfirm(Guid key)
@@ -224,15 +254,15 @@ public class Lobby
         if (opponent.PendingRematch)
         {
             opponent.PendingRematch = false;
-            opponent.Notify("todo body rematch declined");
+            opponent.NotifyAsync(() => "todo body rematch declined");
         }
         else throw new LobbyException("Please use RematchOffer to offer rematch.");
     }
 
     private void HandleRematchConfirmed()
     {
-        WhitePlayer.Notify("todo rematch body");// black
-        BlackPlayer.Notify("todo rematch body");// white
+        WhitePlayer.NotifyAsync(() => "todo rematch body");// black
+        BlackPlayer.NotifyAsync(() => "todo rematch body");// white
 
         // Swap
         (BlackPlayer, WhitePlayer) = (WhitePlayer, BlackPlayer);
@@ -276,6 +306,36 @@ public class Lobby
         {
             Username = player.Username,
         };
+    }
+
+    public PlayerFullDTO GetFullPlayerDTO(Player player)
+    {
+        if (player is null)
+            return null;
+
+        return new PlayerFullDTO
+        {
+            Username = player.Username,
+            Score = player.Score,
+            PendingDraw = player.PendingDraw,
+            PendingRematch = player.PendingRematch,
+            Connections = player.Channels.Count,
+        };
+    }
+
+    public ChessBoardDTO GetBoardDTO()
+    {
+        if (Board is null)
+            return null;
+
+        lock (this)
+        {
+            return new ChessBoardDTO
+            {
+                FEN = Board.ToFen(),
+                PGN = Board.ToPgn()
+            };
+        }
     }
 
     public SideDTO GetSide(Player player)

@@ -2,7 +2,7 @@
 
 public class Player
 {
-    public List<Channel<string>> Channels { get; }
+    public ConcurrentDictionary<Guid, ChannelWriter<string>> Channels { get; }
 
     public string Username { get; }
     public PieceColor Color { get; set; }
@@ -18,7 +18,7 @@ public class Player
         Key = key;
         PendingDraw = false;
         PendingRematch = false;
-        Channels = new List<Channel<string>>();
+        Channels = new ConcurrentDictionary<Guid, ChannelWriter<string>>();
     }
 
     ~Player()
@@ -28,12 +28,9 @@ public class Player
 
     public void CloseHosts()
     {
-        foreach (var channel in Channels)
+        for (int i = Channels.Count - 1; i >= 0; i--)
         {
-            if (!channel.Reader.Completion.IsCompleted)
-            {
-                channel.Writer.Complete();
-            }
+            Channels.ElementAt(i).Value.TryComplete();
         }
     }
 
@@ -43,15 +40,15 @@ public class Player
         PendingRematch = false;
     }
 
-    public Task Notify(string body)
+    public Task NotifyAsync(Func<string> generateBodyFunc)
     {
-        foreach (var channel in Channels)
+        return Task.Run(async () =>
         {
-            if (!channel.Reader.Completion.IsCompleted)
+            var body = generateBodyFunc();
+            foreach (var channel in Channels)
             {
-                channel.Writer.WriteAsync(body);
+                await channel.Value.WriteAsync(body);
             }
-        }
-        return Task.CompletedTask;
+        });
     }
 }
