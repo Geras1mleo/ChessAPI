@@ -1,5 +1,5 @@
 <p align="center">
-  <img width="128" align="center" src="https://user-images.githubusercontent.com/67554762/171267553-1ac1c7f7-7c50-4046-9b40-000535b3f4c9.png">
+  <img width="128" align="center" src="https://user-images.githubusercontent.com/67554762/171270871-3fb55a90-36ed-47fa-a080-da7547cd16c3.png">
 </p>
 <h1 align="center">Gera Chess API</h1>
 <div>
