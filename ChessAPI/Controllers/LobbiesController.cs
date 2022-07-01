@@ -13,55 +13,48 @@ public class LobbiesController : ControllerBase
 
     [HttpPost("Create")]
     [ProducesResponseType(typeof(IChessResponse<LobbyJoinedDTO>), StatusCodes.Status201Created)]
-    public ActionResult<IChessResponse<ChessResponseDTO>> CreateLobby([Required] string username, int? lobbyId, SideDTO? side)
+    public Task<ActionResult<IChessResponse<ChessResponseDTO>>> CreateLobby([Required] string username, int? lobbyId, SideDTO? side)
     {
-        return Handle(() =>
+        return HandleError(async () =>
         {
-            return mediator.Send(new CreateLobbyCommand(username, lobbyId, side))
-                            .GetAwaiter()
-                            .GetResult();
+            return await mediator.Send(new CreateLobbyCommand(username, lobbyId, side));
         });
     }
 
     [HttpPost("Join")]
     [ProducesResponseType(typeof(IChessResponse<LobbyJoinedDTO>), StatusCodes.Status200OK)]
-    public ActionResult<IChessResponse<ChessResponseDTO>> JoinLobby([Required] int lobbyId, [Required] string username)
+    public Task<ActionResult<IChessResponse<ChessResponseDTO>>> JoinLobby([Required] int lobbyId, [Required] string username)
     {
-        return Handle(() =>
+        return HandleError(async () =>
         {
-            return mediator.Send(new JoinLobbyCommand(username, lobbyId))
-                            .GetAwaiter()
-                            .GetResult();
+            return await mediator.Send(new JoinLobbyCommand(username, lobbyId));
         });
     }
 
     [HttpPost("Leave")]
-    public ActionResult<IChessResponse<ChessResponseDTO>> LeaveLobby([Required] int lobbyId, [FromHeader(Name = "key")][Required] Guid key)
+    public Task<ActionResult<IChessResponse<ChessResponseDTO>>> LeaveLobby([Required] int lobbyId, [FromHeader(Name = "key")][Required] Guid key)
     {
-        return Handle(() =>
+        return HandleError(async () =>
         {
-            return mediator.Send(new LeaveLobbyCommand(lobbyId, key))
-                            .GetAwaiter()
-                            .GetResult();
+            return await mediator.Send(new LeaveLobbyCommand(lobbyId, key));
         });
     }
 
     [HttpGet("{lobbyId}")]
     [ProducesResponseType(typeof(IChessResponse<ChessLobbyDTO>), StatusCodes.Status200OK)]
-    public ActionResult<IChessResponse<ChessResponseDTO>> ExploreLobby([Required] int lobbyId)
+    public Task<ActionResult<IChessResponse<ChessResponseDTO>>> ExploreLobby([Required] int lobbyId)
     {
-        return Handle(() =>
+        return HandleError(async () =>
         {
-            return mediator.Send(new ExploreLobbyQuery(lobbyId))
-                       .GetAwaiter()
-                       .GetResult();
+            return await mediator.Send(new ExploreLobbyQuery(lobbyId));
         });
     }
-    private ActionResult<IChessResponse<ChessResponseDTO>> Handle(Func<IChessResponse<ChessResponseDTO>> target)
+
+    private async Task<ActionResult<IChessResponse<ChessResponseDTO>>> HandleError(Func<Task<IChessResponse<ChessResponseDTO>>> target)
     {
         try
         {
-            return Ok(target());
+            return Ok(await target());
         }
         catch (LobbyNotFoundException e)
         {

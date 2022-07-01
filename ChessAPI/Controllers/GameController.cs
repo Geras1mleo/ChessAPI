@@ -14,34 +14,30 @@ public class GameController : ControllerBase
     [HttpPost("Move/{lobbyId}")]
     [ProducesResponseType(typeof(IChessResponse<ChessBoardDTO>), StatusCodes.Status200OK)]
     //[ProducesResponseType(typeof(ChessErrorDTO), StatusCodes.Status400BadRequest)]
-    public ActionResult<IChessResponse<ChessResponseDTO>> MoveInLobby([Required] int lobbyId, [Required] string move, [FromHeader(Name = "key")][Required] Guid key)
+    public Task<ActionResult<IChessResponse<ChessResponseDTO>>> MoveInLobby([Required] int lobbyId, [Required] string move, [FromHeader(Name = "key")][Required] Guid key)
     {
-        return Handle(() =>
+        return HandleError(async () =>
         {
-            return mediator.Send(new MoveCommand(lobbyId, key, move))
-                    .GetAwaiter()
-                    .GetResult();
+            return await mediator.Send(new MoveCommand(lobbyId, key, move));
         });
     }
 
     [HttpGet("Board/{lobbyId}")]
     [ProducesResponseType(typeof(IChessResponse<ChessBoardDTO>), StatusCodes.Status200OK)]
-    public ActionResult<IChessResponse<ChessResponseDTO>> ExploreLobby([Required] int lobbyId)
+    public Task<ActionResult<IChessResponse<ChessResponseDTO>>> ExploreLobby([Required] int lobbyId)
     {
-        // todo fields (needed properties to send) 
-        return Handle(() =>
+        // todo fields (needed properties to return) 
+        return HandleError(async () =>
         {
-            return mediator.Send(new ExploreBoardQuery(lobbyId))
-                       .GetAwaiter()
-                       .GetResult();
+            return await mediator.Send(new ExploreBoardQuery(lobbyId));
         });
     }
 
-    private ActionResult<IChessResponse<ChessResponseDTO>> Handle(Func<IChessResponse<ChessResponseDTO>> target)
+    private async Task<ActionResult<IChessResponse<ChessResponseDTO>>> HandleError(Func<Task<IChessResponse<ChessResponseDTO>>> target)
     {
         try
         {
-            return Ok(target());
+            return Ok(await target());
         }
         catch (LobbyNotFoundException e)
         {
