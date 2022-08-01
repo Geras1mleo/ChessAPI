@@ -4,8 +4,9 @@ builder.Logging.ClearProviders();
 builder.Logging.AddConsole();
 
 // Add services to the container.
-builder.Services.AddSingleton<List<Lobby>>();
-builder.Services.AddTransient<LobbyValidator>();
+builder.Services.AddSingleton<ILobbyRepository, LobbyRepository>();
+builder.Services.AddTransient<ILobbyValidator, LobbyValidator>();
+builder.Services.AddTransient<IChessResponseProvider, ChessResponseProvider>();
 
 builder.Services.AddControllers()
                 .AddJsonOptions(options =>
@@ -14,7 +15,7 @@ builder.Services.AddControllers()
                 });
 
 // Add MediatR
-builder.Services.AddMediatR(typeof(ChessServices.ChessResponse).Assembly);
+builder.Services.AddMediatR(typeof(ChessResponseProvider).Assembly);
 
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();

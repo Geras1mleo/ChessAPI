@@ -14,11 +14,17 @@ public class LeaveLobbyCommand : IChessRequest<ChessResponseDTO>
 
 public class LeaveLobbyCommandHandler : IChessRequestHandler<LeaveLobbyCommand, ChessResponseDTO>
 {
-    private readonly LobbyValidator validator;
+    private readonly ILobbyValidator validator;
+    private readonly ILobbyRepository lobbyRepository;
+    private readonly IChessResponseProvider chessResponseProvider;
 
-    public LeaveLobbyCommandHandler(LobbyValidator validator)
+    public LeaveLobbyCommandHandler(ILobbyValidator validator,
+                                    ILobbyRepository lobbyRepository,
+                                    IChessResponseProvider chessResponseProvider)
     {
         this.validator = validator;
+        this.lobbyRepository = lobbyRepository;
+        this.chessResponseProvider = chessResponseProvider;
     }
 
     public Task<IChessResponse<ChessResponseDTO>> Handle(LeaveLobbyCommand request, CancellationToken cancellationToken)
@@ -29,11 +35,12 @@ public class LeaveLobbyCommandHandler : IChessRequestHandler<LeaveLobbyCommand, 
         // If both players left => delete lobby
         if (lobby.WhitePlayer is null && lobby.BlackPlayer is null)
         {
-            validator.Lobbies.Remove(lobby);
+            lobbyRepository.Lobbies.Remove(lobby);
             lobby.CloseHosts();
         }
 
 
-        return Task.FromResult(ChessResponse.Ok<ChessResponseDTO>($"Left from Lobby {request.LobbyId} successfully!"));
+        return Task.FromResult(
+        chessResponseProvider.Ok<ChessResponseDTO>($"Left from Lobby {request.LobbyId} successfully!"));
     }
 }

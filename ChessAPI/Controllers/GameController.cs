@@ -5,10 +5,13 @@
 public class GameController : ControllerBase
 {
     private readonly IMediator mediator;
+    private readonly IChessResponseProvider chessResponseProvider;
 
-    public GameController(IMediator mediator)
+    public GameController(IMediator mediator,
+                          IChessResponseProvider chessResponseProvider)
     {
         this.mediator = mediator;
+        this.chessResponseProvider = chessResponseProvider;
     }
 
     [HttpPost("Move/{lobbyId}")]
@@ -41,24 +44,24 @@ public class GameController : ControllerBase
         }
         catch (LobbyNotFoundException e)
         {
-            return NotFound(ChessResponse.NotFound(e.Message));
+            return NotFound(chessResponseProvider.NotFound(e.Message));
         }
         catch (LobbyException e)
         {
-            return BadRequest(ChessResponse.BadRequest(e.Message));
+            return BadRequest(chessResponseProvider.BadRequest(e.Message));
         }
         catch (ChessException e)
         {
-            return BadRequest(ChessResponse.BadRequest(e.Message,
-                                                       new ChessBoardDTO
-                                                       {
-                                                           FEN = e.Board?.ToFen(),
-                                                           PGN = e.Board?.ToPgn()
-                                                       }));
+            return BadRequest(chessResponseProvider.BadRequest(e.Message,
+            new ChessBoardDTO
+            {
+                FEN = e.Board?.ToFen(),
+                PGN = e.Board?.ToPgn()
+            }));
         }
         catch (Exception e)
         {
-            return BadRequest(ChessResponse.BadRequest(e.Message));
+            return BadRequest(chessResponseProvider.BadRequest(e.Message));
         }
     }
 }

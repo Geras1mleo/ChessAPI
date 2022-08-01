@@ -5,10 +5,13 @@
 public class LobbiesController : ControllerBase
 {
     private readonly IMediator mediator;
+    private readonly IChessResponseProvider chessResponseProvider;
 
-    public LobbiesController(IMediator mediator)
+    public LobbiesController(IMediator mediator,
+                             IChessResponseProvider chessResponseProvider)
     {
         this.mediator = mediator;
+        this.chessResponseProvider = chessResponseProvider;
     }
 
     [HttpPost("Create")]
@@ -58,15 +61,15 @@ public class LobbiesController : ControllerBase
         }
         catch (LobbyNotFoundException e)
         {
-            return NotFound(ChessResponse.NotFound(e.Message));
+            return NotFound(chessResponseProvider.NotFound(e.Message));
         }
         catch (LobbyException e)
         {
-            return BadRequest(ChessResponse.BadRequest(e.Message));
+            return BadRequest(chessResponseProvider.BadRequest(e.Message));
         }
         catch (Exception e)
         {
-            return BadRequest(ChessResponse.BadRequest(e.Message));
+            return BadRequest(chessResponseProvider.BadRequest(e.Message));
         }
     }
 }

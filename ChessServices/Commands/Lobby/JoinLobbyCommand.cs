@@ -14,11 +14,14 @@ public class JoinLobbyCommand : IChessRequest<LobbyJoinedDTO>
 
 public class JoinLobbyCommandHandler : IChessRequestHandler<JoinLobbyCommand, LobbyJoinedDTO>
 {
-    private readonly LobbyValidator validator;
+    private readonly ILobbyValidator validator;
+    private readonly IChessResponseProvider chessResponseProvider;
 
-    public JoinLobbyCommandHandler(LobbyValidator validator)
+    public JoinLobbyCommandHandler(ILobbyValidator validator,
+                                   IChessResponseProvider chessResponseProvider)
     {
         this.validator = validator;
+        this.chessResponseProvider = chessResponseProvider;
     }
 
     public Task<IChessResponse<LobbyJoinedDTO>> Handle(JoinLobbyCommand request, CancellationToken cancellationToken)
@@ -32,14 +35,14 @@ public class JoinLobbyCommandHandler : IChessRequestHandler<JoinLobbyCommand, Lo
         lobby.Join(player);
 
         return Task.FromResult(
-               ChessResponse.Ok("Lobby joined successfully!",
-               new LobbyJoinedDTO
-               {
-                   LobbyId = lobby.LobbyId,
-                   Key = key,
-                   PlayingSide = lobby.GetSide(player),
-                   White = lobby.GetPlayerDTO(lobby.WhitePlayer),
-                   Black = lobby.GetPlayerDTO(lobby.BlackPlayer),
-               }));
+        chessResponseProvider.Ok("Lobby joined successfully!",
+        new LobbyJoinedDTO
+        {
+            LobbyId = lobby.LobbyId,
+            Key = key,
+            PlayingSide = lobby.GetSide(player),
+            White = lobby.GetPlayerDTO(lobby.WhitePlayer),
+            Black = lobby.GetPlayerDTO(lobby.BlackPlayer),
+        }));
     }
 }

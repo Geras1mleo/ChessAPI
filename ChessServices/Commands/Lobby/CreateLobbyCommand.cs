@@ -16,11 +16,17 @@ public class CreateLobbyCommand : IChessRequest<LobbyJoinedDTO>
 
 public class CreateLobbyCommandHandler : IChessRequestHandler<CreateLobbyCommand, LobbyJoinedDTO>
 {
-    private readonly LobbyValidator validator;
+    private readonly ILobbyValidator validator;
+    private readonly ILobbyRepository lobbyRepository;
+    private readonly IChessResponseProvider chessResponseProvider;
 
-    public CreateLobbyCommandHandler(LobbyValidator validator)
+    public CreateLobbyCommandHandler(ILobbyValidator validator,
+                                     ILobbyRepository lobbyRepository,
+                                     IChessResponseProvider chessResponseProvider)
     {
         this.validator = validator;
+        this.lobbyRepository = lobbyRepository;
+        this.chessResponseProvider = chessResponseProvider;
     }
 
     public Task<IChessResponse<LobbyJoinedDTO>> Handle(CreateLobbyCommand request, CancellationToken cancellationToken)
@@ -32,17 +38,17 @@ public class CreateLobbyCommandHandler : IChessRequestHandler<CreateLobbyCommand
         var player = new Player(request.Username, key);
         var lobby = new Models.Lobby(newLobbyId, player, validator.ValidateSide(request.Side));
 
-        validator.Lobbies.Add(lobby);
+        lobbyRepository.Lobbies.Add(lobby);
 
         return Task.FromResult(
-               ChessResponse.Created("Lobby created successfully!",
-               new LobbyJoinedDTO
-               {
-                   LobbyId = newLobbyId,
-                   Key = key,
-                   PlayingSide = lobby.GetSide(player),
-                   White = lobby.GetPlayerDTO(lobby.WhitePlayer),
-                   Black = lobby.GetPlayerDTO(lobby.BlackPlayer),
-               }));
+        chessResponseProvider.Created("Lobby created successfully!",
+        new LobbyJoinedDTO
+        {
+            LobbyId = newLobbyId,
+            Key = key,
+            PlayingSide = lobby.GetSide(player),
+            White = lobby.GetPlayerDTO(lobby.WhitePlayer),
+            Black = lobby.GetPlayerDTO(lobby.BlackPlayer),
+        }));
     }
 }

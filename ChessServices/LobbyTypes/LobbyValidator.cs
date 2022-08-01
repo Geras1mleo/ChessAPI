@@ -1,12 +1,12 @@
 ﻿namespace ChessServices;
 
-public class LobbyValidator
+public class LobbyValidator : ILobbyValidator
 {
-    public List<Lobby> Lobbies { get; }
+    private readonly ILobbyRepository lobbyRepository;
 
-    public LobbyValidator(List<Lobby> lobbies)
+    public LobbyValidator(ILobbyRepository lobbyRepository)
     {
-        Lobbies = lobbies;
+        this.lobbyRepository = lobbyRepository;
     }
 
     public string ValidateUsername(string username)
@@ -22,10 +22,10 @@ public class LobbyValidator
         if (lobbyId == null)
             lobbyId = GetNewLobbyID(0);
 
-        else if (Lobbies.Any(l => l.LobbyId == lobbyId))
+        else if (lobbyRepository.Lobbies.Any(l => l.LobbyId == lobbyId))
             throw new Exception($"Lobby: {lobbyId} already exist.");
 
-        if (Lobbies.Count > 100)
+        if (lobbyRepository.Lobbies.Count > 100)
             throw new Exception("Lobbies overflow");
 
         return (int)lobbyId;
@@ -34,7 +34,7 @@ public class LobbyValidator
     private int GetNewLobbyID(int id)
     {
         id++;
-        return Lobbies.Any(l => l.LobbyId == id) ? GetNewLobbyID(id) : id;
+        return lobbyRepository.Lobbies.Any(l => l.LobbyId == id) ? GetNewLobbyID(id) : id;
     }
 
     public PieceColor ValidateSide(SideDTO? side)
@@ -49,6 +49,7 @@ public class LobbyValidator
 
     public Lobby GetLobby(int lobbyId)
     {
-        return Lobbies.FirstOrDefault(l => l.LobbyId == lobbyId) ?? throw new LobbyNotFoundException($"Lobby {lobbyId} has been not found...");
+        return lobbyRepository.Lobbies.FirstOrDefault(l => l.LobbyId == lobbyId)
+            ?? throw new LobbyNotFoundException($"Lobby {lobbyId} has been not found...");
     }
 }

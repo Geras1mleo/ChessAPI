@@ -12,11 +12,14 @@ public class ExploreLobbyQuery : IChessRequest<ChessLobbyDTO>
 
 public class ExploreLobbyQueryHandler : IChessRequestHandler<ExploreLobbyQuery, ChessLobbyDTO>
 {
-    private readonly LobbyValidator validator;
+    private readonly ILobbyValidator validator;
+    private readonly IChessResponseProvider chessResponseProvider;
 
-    public ExploreLobbyQueryHandler(LobbyValidator validator)
+    public ExploreLobbyQueryHandler(ILobbyValidator validator,
+                                    IChessResponseProvider chessResponseProvider)
     {
         this.validator = validator;
+        this.chessResponseProvider = chessResponseProvider;
     }
 
     public Task<IChessResponse<ChessLobbyDTO>> Handle(ExploreLobbyQuery request, CancellationToken cancellationToken)
@@ -24,13 +27,13 @@ public class ExploreLobbyQueryHandler : IChessRequestHandler<ExploreLobbyQuery, 
         var lobby = validator.GetLobby(request.LobbyId);
 
         return Task.FromResult(
-                ChessResponse.Ok("Exploring lobby...",
-                new ChessLobbyDTO
-                {
-                    BlackPlayer = lobby.GetFullPlayerDTO(lobby.BlackPlayer),
-                    WhitePlayer = lobby.GetFullPlayerDTO(lobby.WhitePlayer),
-                    Board = lobby.GetBoardDTO(),
-                    Spectators = lobby.SpectatorsChannels.Count,
-                }));
+        chessResponseProvider.Ok("Exploring lobby...",
+        new ChessLobbyDTO
+        {
+            BlackPlayer = lobby.GetFullPlayerDTO(lobby.BlackPlayer),
+            WhitePlayer = lobby.GetFullPlayerDTO(lobby.WhitePlayer),
+            Board = lobby.GetBoardDTO(),
+            Spectators = lobby.SpectatorsChannels.Count,
+        }));
     }
 }

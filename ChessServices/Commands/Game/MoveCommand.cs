@@ -16,11 +16,14 @@ public class MoveCommand : IChessRequest<ChessBoardDTO>
 
 public class MoveCommandHandler : IChessRequestHandler<MoveCommand, ChessBoardDTO>
 {
-    private readonly LobbyValidator validator;
+    private readonly ILobbyValidator validator;
+    private readonly IChessResponseProvider chessResponseProvider;
 
-    public MoveCommandHandler(LobbyValidator validator)
+    public MoveCommandHandler(ILobbyValidator validator,
+                              IChessResponseProvider chessResponseProvider)
     {
         this.validator = validator;
+        this.chessResponseProvider = chessResponseProvider;
     }
 
     public Task<IChessResponse<ChessBoardDTO>> Handle(MoveCommand request, CancellationToken cancellationToken)
@@ -29,10 +32,10 @@ public class MoveCommandHandler : IChessRequestHandler<MoveCommand, ChessBoardDT
         lobby.MakeMove(request.Move, request.Key);
 
         return Task.FromResult(
-                ChessResponse.Ok("Move executed successfully!", new ChessBoardDTO
-                {
-                    PGN = lobby.Board.ToPgn(),
-                    FEN = lobby.Board.ToFen()
-                }));
+        chessResponseProvider.Ok("Move executed successfully!", new ChessBoardDTO
+        {
+            PGN = lobby.Board.ToPgn(),
+            FEN = lobby.Board.ToFen()
+        }));
     }
 }

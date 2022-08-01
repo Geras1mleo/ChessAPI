@@ -12,11 +12,14 @@ public class ExploreBoardQuery : IChessRequest<ChessBoardDTO>
 
 public class ExploreBoardQueryHandler : IChessRequestHandler<ExploreBoardQuery, ChessBoardDTO>
 {
-    private readonly LobbyValidator validator;
+    private readonly ILobbyValidator validator;
+    private readonly IChessResponseProvider chessResponseProvider;
 
-    public ExploreBoardQueryHandler(LobbyValidator validator)
+    public ExploreBoardQueryHandler(ILobbyValidator validator,
+                                    IChessResponseProvider chessResponseProvider)
     {
         this.validator = validator;
+        this.chessResponseProvider = chessResponseProvider;
     }
 
     public Task<IChessResponse<ChessBoardDTO>> Handle(ExploreBoardQuery request, CancellationToken cancellationToken)
@@ -24,11 +27,11 @@ public class ExploreBoardQueryHandler : IChessRequestHandler<ExploreBoardQuery, 
         var board = validator.GetLobby(request.LobbyId).Board;
 
         return Task.FromResult(
-                ChessResponse.Ok("Exploring board positions...",
-                new ChessBoardDTO
-                {
-                    FEN = board.ToFen(),
-                    PGN = board.ToPgn()
-                }));
+        chessResponseProvider.Ok("Exploring board positions...",
+        new ChessBoardDTO
+        {
+            FEN = board.ToFen(),
+            PGN = board.ToPgn()
+        }));
     }
 }

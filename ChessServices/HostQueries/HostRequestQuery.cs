@@ -20,9 +20,9 @@ public class HostRequestQuery : INotification
 
 public class HostRequestQueryHandler : INotificationHandler<HostRequestQuery>
 {
-    private readonly LobbyValidator validator;
+    private readonly ILobbyValidator validator;
 
-    public HostRequestQueryHandler(LobbyValidator validator)
+    public HostRequestQueryHandler(ILobbyValidator validator)
     {
         this.validator = validator;
     }
